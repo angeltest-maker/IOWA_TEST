@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Iowa Gambling Task - Mobile</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+  h1 { font-size: 1.8em; }
+  p { font-size: 1.2em; }
+  button { font-size: 1.5em; padding: 20px; margin: 10px; width: 45%; max-width: 200px; border-radius: 10px; }
+  #decks { display: flex; flex-wrap: wrap; justify-content: center; }
+  #feedback { margin-top: 20px; font-size: 1.1em; max-height: 250px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 10px; }
+  #terminate { background-color: red; color: white; }
+</style>
+</head>
+<body>
+
+<h1>Iowa Gambling Task</h1>
+<p>Choose a deck: A, B, C, or D</p>
+<div id="decks">
+  <button onclick="chooseDeck('A')">Deck A</button>
+  <button onclick="chooseDeck('B')">Deck B</button>
+  <button onclick="chooseDeck('C')">Deck C</button>
+  <button onclick="chooseDeck('D')">Deck D</button>
+</div>
+
+<button id="terminate" onclick="terminateTask()">Terminate Task</button>
+
+<div id="feedback"></div>
+
+<script>
+// ----------------------------
+// Google Sheet Web App URL
+// ----------------------------
+const googleSheetURL = "https://script.google.com/macros/s/AKfycbyHXVSbQiabYfdtdNso9Mos8uJvqg3K1NOlrDuf_o1t0Tej6GAq-SrsBmeIDRF3bnE2HA/exec";
+
+// ----------------------------
+// Participant ID
+// ----------------------------
+let participantID = prompt("Enter participant ID (e.g., P01):");
+if (!participantID) participantID = "Unknown";
+
+// ----------------------------
+// Experiment parameters
+// ----------------------------
+let nTrials = 60; 
+let trial = 0;
+let results = [];
+let totalScore = 2000;
+
+// ----------------------------
+// Linked outcomes for balanced decks
+// ----------------------------
+let AB_outcomes = [];
+let CD_outcomes = [];
+for (let i = 0; i < nTrials; i++) {
+  AB_outcomes.push(Math.random() < 0.5 ? 0 : 1); // 0=safe, 1=risky
+  CD_outcomes.push(i % 2 === 0 ? 0 : 50); // alternating small loss
+}
+
+// ----------------------------
+// Download CSV
+// ----------------------------
+function downloadCSV(results) {
+    if (results.length === 0) return;
+    const keys = Object.keys(results[0]);
+    const csvRows = [keys.join(',')];
+    results.forEach(row => csvRows.push(keys.map(k => row[k]).join(',')));
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden','');
+    a.href = url;
+    const now = new Date();
+    const timestamp = now.getFullYear()+
+                      String(now.getMonth()+1).padStart(2,'0')+
+                      String(now.getDate()).padStart(2,'0')+"_"+ 
+                      String(now.getHours()).padStart(2,'0')+
+                      String(now.getMinutes()).padStart(2,'0')+
+                      String(now.getSeconds()).padStart(2,'0');
+    a.download = `IGT_${participantID}_${timestamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+// ----------------------------
+// Main experiment function
+// ----------------------------
+function chooseDeck(deck) {
+  if (trial >= nTrials) return;
+
+  let gain = 0, loss = 0, net = 0;
+
+  if (deck === 'A' || deck === 'B') {
+    if (AB_outcomes[trial] === 0) { gain=100; loss=0; } 
+    else { gain=100; loss=250; }
+    net = gain - loss;
+  } else if (deck === 'C' || deck === 'D') {
+    gain = 50;
+    loss = CD_outcomes[trial];
+    net = gain - loss;
+  }
+
+  totalScore += net;
+
+  results.push({trial: trial+1, choice: deck, gain, loss, net, totalScore});
+
+  const feedbackDiv = document.getElementById('feedback');
+  feedbackDiv.innerHTML += 
+    `Trial ${trial+1}: You chose ${deck}. Gain: $${gain}, Loss: $${loss}, Net: $${net}. Total: ${totalScore}<br>`;
+  feedbackDiv.scrollTop = feedbackDiv.scrollHeight; // auto-scroll
+
+  trial++;
+  if (trial === nTrials) endTask();
+}
+
+// ----------------------------
+// Terminate / End task
+// ----------------------------
+function terminateTask() {
+  endTask();
+}
+
+function endTask() {
+  const feedbackDiv = document.getElementById('feedback');
+  feedbackDiv.innerHTML += "<br><b>Task complete! Sending results & downloading CSV...</b>";
+
+  // send results to Google Sheet
+  fetch(googleSheetURL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({participantID, trials: results})
+  })
+  .then(() => feedbackDiv.innerHTML += "<br>✅ Results sent to Sheet!")
+  .catch(err => {
+    console.error(err);
+    feedbackDiv.innerHTML += "<br>❌ Failed to send results!";
+  });
+
+  downloadCSV(results);
+  trial = nTrials;
+}
+</script>
+
+</body>
+</html>
