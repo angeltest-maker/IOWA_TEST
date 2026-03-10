@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Iowa Gambling Task - Mobile</title>
+<title>Ψ Psynalisis Test</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -106,8 +106,8 @@ button:disabled {
 
 <div id="timerBox">Time: --:--</div>
 
-<h1>Iowa Gambling Task</h1>
-<p>Choose a deck: A, B, C, or D</p>
+<h1>Ψ Psynalisis Test</h1>
+<p>Select a deck: A, B, C, or D</p>
 
 <div id="scoreBox">Score: 2000</div>
 <div id="trialBox">Trial: 0 / 60</div>
@@ -127,25 +127,20 @@ button:disabled {
 <button id="terminate" onclick="terminateTask()">Terminate Task</button>
 
 <script>
-// ----------------------------
+
 // Google Sheet Web App URL
-// ----------------------------
 const googleSheetURL = "https://script.google.com/macros/s/AKfycbyHXVSbQiabYfdtdNso9Mos8uJvqg3K1NOlrDuf_o1t0Tej6GAq-SrsBmeIDRF3bnE2HA/exec";
 
-// ----------------------------
 // Participant ID
-// ----------------------------
 let participantID = prompt("Enter participant ID (e.g., P01):");
 if (!participantID) participantID = "Unknown";
 
-// ----------------------------
-// Timer input
-// ----------------------------
+// Timer
 let timerMinutes = prompt("Enter time limit in minutes:");
 timerMinutes = parseInt(timerMinutes, 10);
 
 if (isNaN(timerMinutes) || timerMinutes <= 0) {
-  timerMinutes = 3; // fallback default
+  timerMinutes = 3;
 }
 
 let totalSeconds = timerMinutes * 60;
@@ -153,9 +148,7 @@ let timerInterval = null;
 let timerStarted = false;
 let taskEnded = false;
 
-// ----------------------------
 // Experiment parameters
-// ----------------------------
 let nTrials = 60;
 let trial = 0;
 let results = [];
@@ -163,9 +156,7 @@ let totalScore = 2000;
 let awaitingCollect = false;
 let pendingResult = null;
 
-// ----------------------------
-// Linked outcomes
-// ----------------------------
+// Outcomes
 let AB_outcomes = [];
 let CD_outcomes = [];
 
@@ -174,9 +165,7 @@ for (let i = 0; i < nTrials; i++) {
   CD_outcomes.push(i % 2 === 0 ? 0 : 50);
 }
 
-// ----------------------------
-// Utility UI functions
-// ----------------------------
+// UI
 function updateScoreDisplay() {
   document.getElementById("scoreBox").textContent = `Score: ${totalScore}`;
 }
@@ -192,6 +181,7 @@ function setDeckButtonsEnabled(enabled) {
 function updateTimerDisplay() {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
+
   document.getElementById("timerBox").textContent =
     "Time: " +
     String(minutes).padStart(2, "0") +
@@ -199,11 +189,11 @@ function updateTimerDisplay() {
     String(seconds).padStart(2, "0");
 }
 
-// ----------------------------
-// TIMER FUNCTION
-// ----------------------------
+// Timer
 function startTimer() {
+
   function updateTimer() {
+
     if (taskEnded) return;
 
     updateTimerDisplay();
@@ -215,16 +205,16 @@ function startTimer() {
     }
 
     totalSeconds--;
+
   }
 
   updateTimer();
   timerInterval = setInterval(updateTimer, 1000);
 }
 
-// ----------------------------
-// Download CSV
-// ----------------------------
+// CSV Download
 function downloadCSV(results) {
+
   if (results.length === 0) return;
 
   const keys = Object.keys(results[0]);
@@ -237,6 +227,7 @@ function downloadCSV(results) {
   const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
+
   const now = new Date();
 
   const timestamp =
@@ -249,17 +240,17 @@ function downloadCSV(results) {
 
   a.hidden = true;
   a.href = url;
-  a.download = `IGT_${participantID}_${timestamp}.csv`;
+  a.download = `PsynalisisTest_${participantID}_${timestamp}.csv`;
 
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+
 }
 
-// ----------------------------
-// Main experiment function
-// ----------------------------
+// Choose deck
 function chooseDeck(deck) {
+
   if (!timerStarted) {
     startTimer();
     timerStarted = true;
@@ -270,6 +261,7 @@ function chooseDeck(deck) {
   let gain = 0, loss = 0, net = 0;
 
   if (deck === "A" || deck === "B") {
+
     if (AB_outcomes[trial] === 0) {
       gain = 100;
       loss = 0;
@@ -277,9 +269,12 @@ function chooseDeck(deck) {
       gain = 100;
       loss = 250;
     }
+
   } else if (deck === "C" || deck === "D") {
+
     gain = 50;
     loss = CD_outcomes[trial];
+
   }
 
   net = gain - loss;
@@ -293,6 +288,7 @@ function chooseDeck(deck) {
   };
 
   awaitingCollect = true;
+
   setDeckButtonsEnabled(false);
 
   document.getElementById("resultText").innerHTML = `
@@ -303,12 +299,12 @@ function chooseDeck(deck) {
   `;
 
   document.getElementById("resultCard").style.display = "block";
+
 }
 
-// ----------------------------
 // Collect points
-// ----------------------------
 function collectPoints() {
+
   if (!pendingResult || taskEnded) return;
 
   totalScore += pendingResult.net;
@@ -323,11 +319,13 @@ function collectPoints() {
   });
 
   trial++;
+
   updateScoreDisplay();
   updateTrialDisplay();
 
   pendingResult = null;
   awaitingCollect = false;
+
   document.getElementById("resultCard").style.display = "none";
 
   if (trial >= nTrials) {
@@ -335,20 +333,22 @@ function collectPoints() {
   } else {
     setDeckButtonsEnabled(true);
   }
+
 }
 
-// ----------------------------
-// Terminate / End task
-// ----------------------------
+// End
 function terminateTask() {
   endTask();
 }
 
 function endTask() {
+
   if (taskEnded) return;
+
   taskEnded = true;
 
   setDeckButtonsEnabled(false);
+
   document.getElementById("resultCard").style.display = "none";
 
   if (timerInterval) clearInterval(timerInterval);
@@ -361,17 +361,19 @@ function endTask() {
   }).catch(err => console.error(err));
 
   downloadCSV(results);
+
   trial = nTrials;
+
   updateTrialDisplay();
   updateTimerDisplay();
+
 }
 
-// ----------------------------
 // Initial display
-// ----------------------------
 updateScoreDisplay();
 updateTrialDisplay();
 updateTimerDisplay();
+
 </script>
 
 </body>
